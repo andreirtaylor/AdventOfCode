@@ -1,0 +1,22 @@
+{
+  "name": "adventofcode2021",
+  "version": "1.0.0",
+  "description": "Nothing much to say here, these are my solutions until I decide this is too much of a time sink and give up.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andreirtaylor/AdventOfCode.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/andreirtaylor/AdventOfCode/issues"
+  },
+  "homepage": "https://github.com/andreirtaylor/AdventOfCode#readme",
+  "dependencies": {
+    "datastructures-js": "^10.1.1"
+  }
+}
