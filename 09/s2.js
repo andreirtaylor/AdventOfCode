@@ -34,7 +34,7 @@ const visited = {}
 // the reason for this is the fact that the walls count as stopping points
 // so each basin will fill all the way to the top every time, if this wasnt the case this
 // problem gets a LOT harder.
-// https://leetcode.com/problems/trapping-rain-water-ii/
+// see https://leetcode.com/problems/trapping-rain-water-ii/
 //
 // DFS works easier than BFS because you dont want to accidentally count the same basin
 // twice, by using the stack you exhaust all parts of one basin even if it overlaps 
