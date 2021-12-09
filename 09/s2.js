@@ -1,76 +1,47 @@
-// see https://www.npmjs.com/package/datastructures-js
-const {
-  Stack,
-
-  Queue,
-
-  EnhancedSet,
-
-  LinkedList,
-  LinkedListNode,
-  DoublyLinkedList,
-  DoublyLinkedListNode,
-
-  MinHeap,
-  MaxHeap,
-  HeapNode, // interface
-
-  PriorityQueueOptions, // interface
-  PriorityQueueItem, // interface
-  MinPriorityQueue,
-  MaxPriorityQueue,
-
-  BinarySearchTree,
-  BinarySearchTreeNode,
-  AvlTree,
-  AvlTreeNode,
-
-  Trie,
-  TrieNode,
-
-  Graph,
-  DirectedGraph,
-} = require('datastructures-js');
-
 const fs = require('fs');
-const { start } = require('repl');
-
 const data = fs.readFileSync('./testInput.txt', {encoding:'utf8', flag:'r'});
 
-//const dirs = { up: [-1, 0], down: [1, 0], left: [0, -1], right: [0, 1]}
 const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]]
 
 const arr = data.split("\n").filter((x)=> x).map(x => x.trim().split(""));
 
-let risk = 0;
-
-let starts = []
+let stack = []
 
 for(let i = 0; i < arr.length; ++i) {
   for(let j = 0; j < arr[0].length; ++j) {
     let isLow = true;
-    // console.log(i, j)
     dirs.forEach((dir) => {
       const [x,y] = dir;
-      // console.log("sexy", arr[i][j], x,y, arr[i+x] !== undefined && arr[i+x][j+y])
       if(arr[i+x] !== undefined && arr[i+x][j+y] !== undefined && arr[i+x][j+y] <= arr[i][j]) {
         isLow = false
-        // console.log('fufufufufs')
       }
 
     })
     if(isLow) {
-      risk += (arr[i][j]|0) + 1
-      starts.push({i,j, b:starts.length});
+      stack.push({i,j, b:stack.length});
     }
   }
 }
 
-//coords to basin
+// coords to basin i.e. 20,6 -> 4, the basin is defined by the starting points
+// determined in the first part, its just the index in the stack, nothing special
 const visited = {}
 
-while(starts.length) {
-  const {i, j, b} = starts.pop();
+// do a DFS search of all of the lowest points and stop the search when you hit a 9
+// you know that because there is no limit to how far the basin can fill other 
+// than reaching the top.
+// 
+// the reason for this is the fact that the walls count as stopping points
+// so each basin will fill all the way to the top every time, if this wasnt the case this
+// problem gets a LOT harder.
+// https://leetcode.com/problems/trapping-rain-water-ii/
+//
+// DFS works easier than BFS because you dont want to accidentally count the same basin
+// twice, by using the stack you exhaust all parts of one basin even if it overlaps 
+// with a second basin
+
+while(stack.length) {
+  const {i, j, b} = stack.pop();
   const key = `${i},${j}`;
   //console.log(key, b)
   if(visited[key] !== undefined || arr[i][j] == 9) continue;
@@ -78,13 +49,14 @@ while(starts.length) {
   dirs.forEach((dir) => {
     const [x,y] = dir;
     if(arr[i+x] !== undefined && arr[i+x][j+y] !== undefined && arr[i+x][j+y] !== 9) {
-      starts.push({i: i+x, j:j+y, b})
+      stack.push({i: i+x, j:j+y, b})
     }
   })
 }
 
+// since we not have a list of coordinates and which basin they belong to
+// we can now count and sort the largest basins
 const counter= {}
 
 Object.values(visited).forEach((v) => counter[v] = (counter[v] || 0) + 1)
-
 console.log(Object.values(counter).sort((a,b) => b-a).slice(0,3).reduce((p,c) => p*c, 1))
