@@ -27,7 +27,6 @@ data.split("\n").forEach(line => {
   }
   if(!broken) {
     let errorScore = stack.reverse().reduce((p, c) => {
-      //console.log(p, c)
       return p * 5 + (values[openers.indexOf(c)]|0);
     }, 0)
     scores.push(errorScore)
