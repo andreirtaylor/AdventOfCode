@@ -12,7 +12,6 @@ const lightUp = (x, y) => {
   flashed.add(key)
   for (let i = -1; i <= 1; ++i) {
     for (let j = -1; j <= 1; ++j) {
-      //console.log(x+i, y+j)
       if (matrix[x + i] === undefined || matrix[x + i][y + j] === undefined && (i !== 0 || j !== 0)) continue
       const val = matrix[x + i][y + j] + 1
       if (val === 10) lightUp(x + i, y + j)
@@ -41,7 +40,7 @@ while (steps++ < count) {
       }
     }
   }
-  
+
   if (lightUps === 100) {
     console.log(steps);
     break
