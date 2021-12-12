@@ -1,6 +1,7 @@
 {
   "name": "adventofcode2021",
   "version": "1.0.0",
+  "prettier": "prettier-airbnb-config",
   "description": "Nothing much to say here, these are my solutions until I decide this is too much of a time sink and give up.",
   "main": "index.js",
   "scripts": {
@@ -17,6 +18,10 @@
   },
   "homepage": "https://github.com/andreirtaylor/AdventOfCode#readme",
   "dependencies": {
-    "datastructures-js": "^10.1.1"
+    "datastructures-js": "^10.1.1",
+    "prettier-airbnb-config": "^1.0.0"
+  },
+  "devDependencies": {
+    "prettier": "^2.5.1"
   }
 }

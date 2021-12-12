@@ -1,24 +1,49 @@
-const fs = require('fs');
+const fs = require("fs");
 
-const data = fs.readFileSync('./testInput.txt', {encoding:'utf8', flag:'r'});
-const lines = data.split("\n")
+const data = fs.readFileSync("./testInput.txt", {
+  encoding: "utf8",
+  flag: "r",
+});
+const lines = data.split("\n");
 
 let total = 0;
 lines.forEach((line) => {
-  let [signals, display] = line.split('|').filter((line) => line)
+  let [signals, display] = line.split("|").filter((line) => line);
 
-  let counts = signals.split(" ").join("").split("").reduce((p, l) => (p[l] = (p[l] || 0) + 1) && p, {})
+  let counts = signals
+    .split(" ")
+    .join("")
+    .split("")
+    .reduce((p, l) => (p[l] = (p[l] || 0) + 1) && p, {});
 
-  let invertCounts = {}
-  Object.keys(counts).forEach(k => {
-    invertCounts[counts[k]] = [...(invertCounts[counts[k]] || []), k]
-  })
-  
-  signals = signals.split(" ").map(s => s.trim()).filter((x) => x).sort((a, b) => a.length - b.length)
-  display = display.split(" ").map(s => s.trim()).filter((x) => x)
+  let invertCounts = {};
+  Object.keys(counts).forEach((k) => {
+    invertCounts[counts[k]] = [...(invertCounts[counts[k]] || []), k];
+  });
 
-  const nums = ["abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg"];
-  const translate = { a: "", b: "", c:"", d:"", e:"", f:"", g:""}
+  signals = signals
+    .split(" ")
+    .map((s) => s.trim())
+    .filter((x) => x)
+    .sort((a, b) => a.length - b.length);
+  display = display
+    .split(" ")
+    .map((s) => s.trim())
+    .filter((x) => x);
+
+  const nums = [
+    "abcefg",
+    "cf",
+    "acdeg",
+    "acdfg",
+    "bcdf",
+    "abdfg",
+    "abdefg",
+    "acf",
+    "abcdefg",
+    "abcdfg",
+  ];
+  const translate = { a: "", b: "", c: "", d: "", e: "", f: "", g: "" };
 
   // I thought of this as a matrix
   //    a b c  d e f g
@@ -43,43 +68,56 @@ lines.forEach((line) => {
   // the other 8 is c
 
   // there is only ever one for these 3 counts
-  translate.e = invertCounts[4][0]
-  translate.f = invertCounts[9][0]
-  translate.b = invertCounts[6][0] 
+  translate.e = invertCounts[4][0];
+  translate.f = invertCounts[9][0];
+  translate.b = invertCounts[6][0];
 
   // the common element between 4, 3, 5 and 2 is the d panel
   let possibilities = signals[4].split("");
-  signals.filter(s => s.length === 5 || s.length === 4).forEach((s) => {
-    possibilities = possibilities.filter(p => s.split('').includes(p))
-  })
+  signals
+    .filter((s) => s.length === 5 || s.length === 4)
+    .forEach((s) => {
+      possibilities = possibilities.filter((p) => s.split("").includes(p));
+    });
   translate.d = possibilities[0];
   // the only other possible 7 count is g
-  translate.g = invertCounts[7].filter(x => x != translate.d)[0];
+  translate.g = invertCounts[7].filter((x) => x != translate.d)[0];
 
   // find the only common element between 7, 3, 5, 2, 0, 6, 9, 8
   possibilities = signals[5].split("");
-  signals.filter(s => s.length >= 5 || s.length === 3).forEach((s) => {
-    possibilities = possibilities.filter(p => s.split('').includes(p))
-  })
+  signals
+    .filter((s) => s.length >= 5 || s.length === 3)
+    .forEach((s) => {
+      possibilities = possibilities.filter((p) => s.split("").includes(p));
+    });
 
   translate.a = possibilities[0];
-  translate.c = invertCounts[8].filter(x => x !== translate.a)[0];
+  translate.c = invertCounts[8].filter((x) => x !== translate.a)[0];
 
   // translate currently is "expectedLetter => jumbledLetter"
   // we want "jumbledLetter => expectedLetter"
-  let invertTranslate = {}
-  Object.keys(counts).forEach(k => {
-    invertTranslate[translate[k]] = [...(invertTranslate[translate[k]] || []), k]
-  })
+  let invertTranslate = {};
+  Object.keys(counts).forEach((k) => {
+    invertTranslate[translate[k]] = [
+      ...(invertTranslate[translate[k]] || []),
+      k,
+    ];
+  });
 
-  let disp = display.map((num) => {
-    num = num.split("").map((d) => {
-      return invertTranslate[d]
-    }).sort().join("")
-    return nums.indexOf(num);
-  }).join("");
-  
-  total += disp|0
-})
+  let disp = display
+    .map((num) => {
+      num = num
+        .split("")
+        .map((d) => {
+          return invertTranslate[d];
+        })
+        .sort()
+        .join("");
+      return nums.indexOf(num);
+    })
+    .join("");
 
-console.log(total)
+  total += disp | 0;
+});
+
+console.log(total);
