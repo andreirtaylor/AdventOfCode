@@ -9,6 +9,8 @@ const data = fs.readFileSync('./testInput.txt', {
 
 let cave = data
   .split('\n')
+  // risk to move here is infinite for all of the places to start, this will be updated
+  // in the BFS below
   .map(l => l.split('').map(risk => ({riskToMoveHere: Number.MAX_SAFE_INTEGER, risk: risk | 0})));
 
 // extend each row with the incremented version along the x axis
@@ -40,19 +42,24 @@ for (let i = 1; i < 5; ++i) {
   });
 }
 cave = cpy;
+cave[0][0] = 0;
 
 let endX = cave.length - 1;
 let endY = cave[0].length - 1;
 
 const q = new MinPriorityQueue({
-  // compare: (a, b) => {
-  //   if (a.risk < b.risk) return -1; // do not swap
-  //   if (a.risk > b.risk) return 1; // swap
-  //   // salaries are the same, compare rank
-  //   return a.risk > b.risk ? 1 : -1;
-  // },
+  compare: (a, b) => {
+    if (a.risk < b.risk) return -1; // do not swap
+    if (a.risk > b.risk) return 1; // swap
+
+    // salaries are the same, compare rank
+    return a.risk > b.risk ? 1 : -1;
+  },
 });
 
+// the 0,0 spot doesnt really matter so I just skip it,
+// I assume you could also set its risk to 0 since its
+// unlikely that you would ever get back around to it.
 q.enqueue({
   risk: 0,
   x: 0,
@@ -64,10 +71,9 @@ q.enqueue({
   y: 0,
 });
 
-//console.log(cave);
-
+// do a broke version of a* that has a heuristic that the lowest risk
+// spot to go to is best.
 while (!q.isEmpty()) {
-  //console.log(q.toArray());
   let {risk, x, y} = q.dequeue();
   if (x < 0) continue;
   if (y < 0) continue;
@@ -75,10 +81,9 @@ while (!q.isEmpty()) {
   if (x > endX) continue;
   if (x === endX && y === endY) {
     console.log(risk + cave[x][y].risk);
-    continue;
+    break;
   }
-  //console.log(risk, x, y, cave[x][y]);
-  if (!cave[x][y]) console.log(x, y);
+
   risk = risk + cave[x][y].risk;
   if (cave[x][y].riskToMoveHere > risk) {
     cave[x][y].riskToMoveHere = risk;
@@ -90,7 +95,7 @@ while (!q.isEmpty()) {
     q.enqueue({
       risk,
       x: x - 1,
-      y: 0,
+      y,
     });
     q.enqueue({
       risk,
@@ -104,5 +109,3 @@ while (!q.isEmpty()) {
     });
   }
 }
-
-//console.log(JSON.stringify(cave, undefined, 3));
