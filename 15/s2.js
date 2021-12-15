@@ -1,59 +1,136 @@
 const {count} = require('console');
 const fs = require('fs');
-
+// see https://www.npmjs.com/package/datastructures-js
+const {MinPriorityQueue} = require('datastructures-js');
 const data = fs.readFileSync('./testInput.txt', {
   encoding: 'utf8',
   flag: 'r',
 });
 
-let [raw, pairs] = data.trim().split('\n\n');
+let cave = data
+  .split('\n')
+  .map(l => l.split('').map(risk => ({riskToMoveHere: Number.MAX_SAFE_INTEGER, risk: risk | 0})));
 
-const pairToInsert = {};
-pairs = pairs.split('\n').forEach(line => {
-  const [pair, insert] = line.split(' -> ');
-  pairToInsert[pair] = insert;
-});
-
-let steps = 40;
-let counter = {};
-const letters = {};
-
-seq = raw.split('').forEach((c, i) => {
-  letters[c] = (letters[c] || 0) + 1;
-  if (i === raw.length - 1) return;
-  counter[`${c}${raw[i + 1]}`] = (counter[`${c}${raw[i + 1]}`] || 0) + 1;
-});
-
-// counter keeps track of the pairs of letters
-// letters keeps track of the individual letter counts
-while (steps--) {
-  let nextCounter = {...counter};
-
-  Object.keys(counter).forEach(c => {
-    if (!counter[c]) return;
-    const [a, b] = c.split('');
-    let insert = pairToInsert[`${a}${b}`];
-
-    if (insert) {
-      // next counter is a copy of counter, and it contains different numbers than the
-      // counter variable after each iteration
-      // Its important to take the original count from the "counter"
-      // and to take the values for the inserted pairs from the newCounter
-      // since the number of pairs that are being processed is coming from the
-      // original string... this took me a while to reason about, if only
-      // javascript had a obj[key]++ type feature instead of this verbose
-      // nonsense
-      const count = counter[`${a}${b}`];
-      nextCounter[`${a}${b}`] -= count;
-      nextCounter[`${a}${insert}`] = (nextCounter[`${a}${insert}`] || 0) + count;
-      nextCounter[`${insert}${b}`] = (nextCounter[`${insert}${b}`] || 0) + count;
-      letters[insert] = (letters[insert] || 0) + count;
-    }
-  });
-  counter = nextCounter;
-
-  const mini = Math.min(...Object.values(letters));
-  const maxi = Math.max(...Object.values(letters));
-
-  console.log(maxi - mini);
+for (let i = 0; i < cave.length; ++i) {
+  let line = '';
+  for (let j = 0; j < cave[0].length; ++j) {
+    line += cave[i][j].risk;
+  }
+  console.log(line);
 }
+console.log('');
+
+cave.forEach((row, r) => {
+  const tmpRow = [...row];
+  for (let i = 1; i < 5; ++i) {
+    tmpRow.push(
+      ...row.map(cell => {
+        let tmp = {...cell};
+        tmp.risk = (cell.risk + i) % 9 || 9;
+        // if (i === 4) console.log(tmp.risk, cell.risk + i, (cell.risk + i) % 10 || 1);
+
+        return tmp;
+      })
+    );
+  }
+  cave[r] = tmpRow;
+});
+
+for (let i = 0; i < cave.length; ++i) {
+  let line = '';
+  for (let j = 0; j < cave[0].length; ++j) {
+    line += cave[i][j].risk;
+  }
+  //console.log(line);
+}
+
+const cpy = [...cave];
+
+for (let i = 1; i < 5; ++i) {
+  cave.forEach(row => {
+    cpy.push(
+      row.map(cell => {
+        let tmp = {...cell};
+        tmp.risk = (cell.risk + i) % 9 || 9;
+        return tmp;
+      })
+    );
+  });
+}
+
+cave = cpy;
+
+for (let i = 0; i < cave.length; ++i) {
+  let line = '';
+  for (let j = 0; j < cave[0].length; ++j) {
+    line += cave[i][j].risk;
+  }
+  console.log(line);
+}
+
+let endX = cave.length - 1;
+let endY = cave[0].length - 1;
+
+const q = new MinPriorityQueue({
+  compare: (a, b) => {
+    if (a.risk < b.risk) return -1; // do not swap
+    if (a.risk > b.risk) return 1; // swap
+
+    // salaries are the same, compare rank
+    return a.risk > b.risk ? 1 : -1;
+  },
+});
+
+q.enqueue({
+  risk: 0,
+  x: 0,
+  y: 1,
+});
+q.enqueue({
+  risk: 0,
+  x: 1,
+  y: 0,
+});
+
+//console.log(cave);
+
+while (!q.isEmpty()) {
+  //console.log(q.toArray());
+  let {risk, x, y} = q.dequeue();
+  if (x < 0) continue;
+  if (y < 0) continue;
+  if (y > endY) continue;
+  if (x > endX) continue;
+  if (x === endX && y === endY) {
+    console.log(risk + cave[x][y].risk);
+    continue;
+  }
+  //console.log(risk, x, y, cave[x][y]);
+  if (!cave[x][y]) console.log(x, y);
+  risk = risk + cave[x][y].risk;
+  if (cave[x][y].riskToMoveHere > risk) {
+    cave[x][y].riskToMoveHere = risk;
+    q.enqueue({
+      risk,
+      x: x + 1,
+      y,
+    });
+    q.enqueue({
+      risk,
+      x: x - 1,
+      y: 0,
+    });
+    q.enqueue({
+      risk,
+      x,
+      y: y + 1,
+    });
+    q.enqueue({
+      risk,
+      x,
+      y: y - 1,
+    });
+  }
+}
+
+//console.log(JSON.stringify(cave, undefined, 3));
