@@ -39,7 +39,6 @@ const processPacket = packet => {
   if (!packet.length || packet.every(c => c == '0'))
     return {version: 0, offset: packet.length, value: 0};
   let version = parseInt(packet.slice(0, 3).join(''), 2);
-  //console.log('top level', version, packet.join(''));
   const type = parseInt(packet.slice(3, 6).join(''), 2);
   const iBit = packet[6] === '1';
   let value = 0;
@@ -52,13 +51,11 @@ const processPacket = packet => {
       value = [];
       let group = packet.slice(offset, offset + GROUP_SIZE);
       while (group[0] != 0) {
-        //console.log(version, type, value, group, ...group.slice(1, GROUP_SIZE));
         value.push(...group.slice(1, GROUP_SIZE));
         offset += GROUP_SIZE;
         group = packet.slice(offset, offset + GROUP_SIZE);
       }
       value.push(...group.slice(1, GROUP_SIZE));
-      //console.log(version, type, value);
 
       value = parseInt(value.join(''), 2);
       offset += GROUP_SIZE;
@@ -71,24 +68,19 @@ const processPacket = packet => {
     case 5:
     case 6:
     case 7:
-      //console.log(iBit, iBit ? packet.slice(7, 18) : packet.slice(7, 22));
       offset = iBit ? 18 : 22;
       const values = [];
 
       let len = parseInt((iBit ? packet.slice(7, 18) : packet.slice(7, 22)).join(''), 2);
-      //console.log(iBit, len, version);
 
       let currOffset = offset;
       while (!iBit ? currOffset < offset + len : len--) {
-        //console.log('packet', packet, packet.slice(7, 18));
         let {version: ver, value: val, offset: off} = processPacket(packet.slice(currOffset));
-        //console.log(iBit, len, ver, val, off);
         values.push(val);
         currOffset += off;
         version += ver;
       }
       offset = currOffset;
-      //console.log(type);
       value = typeFunc[type](values);
       return {version, value, offset};
     default:
@@ -97,6 +89,7 @@ const processPacket = packet => {
 };
 
 // hoist this bad boy
+// this is the main difference between P1 and P2
 var typeFunc = {
   0: values => values.reduce((p, c) => p + c, 0),
   1: values => values.reduce((p, c) => p * c, 1),
