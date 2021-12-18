@@ -1,11 +1,4 @@
 const {strict: assert} = require('assert');
-const {Graph} = require('datastructures-js');
-const fs = require('fs');
-const {off} = require('process');
-const data = fs.readFileSync('./testInput.txt', {
-  encoding: 'utf8',
-  flag: 'r',
-});
 
 const hexToBin = {
   1: '0001',
