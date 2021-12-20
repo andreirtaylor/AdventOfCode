@@ -1,111 +1,1531 @@
 const {strict: assert} = require('assert');
+const exp = require('constants');
+const {randomUUID} = require('crypto');
 
-const hexToBin = {
-  1: '0001',
-  2: '0010',
-  3: '0011',
-  4: '0100',
-  5: '0101',
-  6: '0110',
-  7: '0111',
-  8: '1000',
-  9: '1001',
-  A: '1010',
-  B: '1011',
-  C: '1100',
-  D: '1101',
-  E: '1110',
-  F: '1111',
-  0: '0000',
+// node has a value if applicable, left and right;
+// if a node has a value it cannot have a parent
+// I dont think we need ids if we do inorder traversals
+// but I might be wrong
+// // {
+// //   value, left, id;
+// // }
+
+const convertFromBinTree = node => {
+  if (!node) return null;
+  if (node.value !== null) return node.value;
+  return [convertFromBinTree(node.left), convertFromBinTree(node.right)];
 };
 
-const strToBin = str =>
-  str
-    .split('')
-    .map(x => hexToBin[x])
-    .join('')
-    .split('');
+const convertToBinaryTree = (nums, leafs) => {
+  const [l, r] = nums;
 
-const GROUP_SIZE = 5;
-
-const processPacket = packet => {
-  if (!packet.length || packet.every(c => c == '0'))
-    return {version: 0, offset: packet.length, value: 0};
-  let version = parseInt(packet.slice(0, 3).join(''), 2);
-  const type = parseInt(packet.slice(3, 6).join(''), 2);
-  const iBit = packet[6] === '1';
-  let value = 0;
-
-  let offset = 7;
-  switch (type) {
-    case 4:
-      // this type of packet does not have the I bit
-      offset = 6;
-      value = [];
-      let group = packet.slice(offset, offset + GROUP_SIZE);
-      while (group[0] != 0) {
-        value.push(...group.slice(1, GROUP_SIZE));
-        offset += GROUP_SIZE;
-        group = packet.slice(offset, offset + GROUP_SIZE);
-      }
-      value.push(...group.slice(1, GROUP_SIZE));
-
-      value = parseInt(value.join(''), 2);
-      offset += GROUP_SIZE;
-      return {version, offset, value};
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-    case 4:
-    case 5:
-    case 6:
-    case 7:
-      offset = iBit ? 18 : 22;
-      const values = [];
-
-      let len = parseInt((iBit ? packet.slice(7, 18) : packet.slice(7, 22)).join(''), 2);
-
-      let currOffset = offset;
-      while (!iBit ? currOffset < offset + len : len--) {
-        let {version: ver, value: val, offset: off} = processPacket(packet.slice(currOffset));
-        values.push(val);
-        currOffset += off;
-        version += ver;
-      }
-      offset = currOffset;
-      value = typeFunc[type](values);
-      return {version, value, offset};
-    default:
-      break;
+  let left = {
+    left: null,
+    right: null,
+    value: l,
+  };
+  if (Array.isArray(l)) {
+    left = convertToBinaryTree(l, leafs);
+  } else {
+    left.index = leafs.push(left) - 1;
   }
+
+  let right = {
+    left: null,
+    right: null,
+    value: r,
+  };
+  if (Array.isArray(r)) {
+    right = convertToBinaryTree(r, leafs);
+  } else {
+    right.index = leafs.push(right) - 1;
+  }
+  return {left, right, value: null};
 };
 
-// hoist this bad boy
-// this is the main difference between P1 and P2
-var typeFunc = {
-  0: values => values.reduce((p, c) => p + c, 0),
-  1: values => values.reduce((p, c) => p * c, 1),
-  2: values => Math.min(...values),
-  3: values => Math.max(...values),
-  5: ([l, r]) => (l > r ? 1 : 0),
-  6: ([l, r]) => (l < r ? 1 : 0),
-  7: ([l, r]) => (l == r ? 1 : 0),
+const explode = (node, leafs, depth) => {
+  if (!node) return;
+  //console.log(node, depth);
+  if (explode(node.left, leafs, depth + 1)) return true;
+
+  if (depth === 3 && !node.value) {
+    let deleteNode = (node?.left?.left && node.left) || (node?.right?.left && node.right);
+    if (deleteNode) {
+      const leftDelete = deleteNode.left;
+      const rightDelete = deleteNode.right;
+
+      const leftNode = leafs[leftDelete.index - 1];
+      //console.log(deleteNode, leafs);
+
+      if (leftNode) leftNode.value += leftDelete.value;
+      const rightNode = leafs[rightDelete.index + 1];
+
+      if (rightNode) rightNode.value += rightDelete.value;
+
+      deleteNode.value = 0;
+      deleteNode.left = null;
+      deleteNode.right = null;
+      return true;
+    }
+  }
+  if (explode(node.right, leafs, depth + 1)) return true;
 };
 
-assert.deepEqual(processPacket(strToBin('C200B40A82')).value, 3);
-assert.deepEqual(processPacket(strToBin('04005AC33890')).value, 54);
-assert.deepEqual(processPacket(strToBin('880086C3E88112')).value, 7);
-assert.deepEqual(processPacket(strToBin('CE00C43D881120')).value, 9);
-assert.deepEqual(processPacket(strToBin('D8005AC2A8F0')).value, 1);
-assert.deepEqual(processPacket(strToBin('F600BC2D8F')).value, 0);
-assert.deepEqual(processPacket(strToBin('9C005AC2F8F0')).value, 0);
-assert.deepEqual(processPacket(strToBin('9C0141080250320F1802104A08')).value, 1);
+const split = node => {
+  if (!node) return;
+  //console.log(node);
+  if (split(node.left)) return true;
+
+  if (node?.left?.value > 9) {
+    const val = node.left.value;
+    node.left.value = null;
+    node.left.left = {
+      left: null,
+      right: null,
+      value: Math.floor(val / 2),
+    };
+    node.left.right = {
+      left: null,
+      right: null,
+      value: Math.ceil(val / 2),
+    };
+    return true;
+  }
+
+  if (node?.right?.value > 9) {
+    const val = node.right.value;
+    node.right.value = null;
+    node.right.left = {
+      left: null,
+      right: null,
+      value: Math.floor(val / 2),
+    };
+    node.right.right = {
+      left: null,
+      right: null,
+      value: Math.ceil(val / 2),
+    };
+    return true;
+  }
+  if (split(node.right)) return true;
+};
+
+const reduction = nums => {
+  let leafs = [];
+  let binTree = convertToBinaryTree(nums, leafs);
+  let flattened = nums.flat(3);
+
+  let ret = nums;
+  let needsExplosion = flattened.some(num => Array.isArray(num));
+  let needsSplit = flattened.some(num => num > 9);
+  while (needsExplosion || needsSplit) {
+    if (needsExplosion) {
+      explode(binTree, leafs, 0);
+
+      //console.log('ret2!', JSON.stringify(ret, undefined, 2));
+
+      //console.log('ret3!', JSON.stringify(ret, undefined, 2), needsExplosion);
+
+      // console.log(JSON.stringify(ret, undefined, 2));
+    } else {
+      // we are splitting baby
+      split(binTree);
+    }
+    ret = convertFromBinTree(binTree);
+    leafs = [];
+    binTree = convertToBinaryTree(ret, leafs);
+    //console.log(JSON.stringify(ret));
+    //console.log(JSON.stringify(leafs.map(l => ' ' + l.value)));
+    needsExplosion = ret.flat(3).some(num => Array.isArray(num));
+    needsSplit = ret.flat(3).some(num => num > 9);
+  }
+  //console.log('getting returned!', JSON.stringify(ret, undefined, 2));
+
+  return ret;
+};
+
+const addAll = list => {
+  let maxi = 0;
+  for (let i = 0; i < list.length; i++)
+    for (let j = i + 1; j < list.length; j++)
+      maxi = Math.max(
+        maxi,
+        magnitude(reduction([list[i], list[j]])),
+        magnitude(reduction([list[j], list[i]]))
+      );
+  return maxi;
+  return list.reduce((p, c) => {
+    if (!p) return c;
+
+    let ret = reduction([p, c]);
+    console.log(JSON.stringify(ret));
+    maxi = Math.max(maxi, magnitude(ret));
+    return ret;
+  });
+};
+
+const magnitude = num => {
+  return Number.isInteger(num) ? num : 3 * magnitude(num[0]) + 2 * magnitude(num[1]);
+};
+
+// assert.deepEqual(reduction([[[[0, 9], 2], 3], 4]), [[[[0, 9], 2], 3], 4]);
+// assert.deepEqual(reduction([[[[[9, 8], 1], 2], 3], 4]), [[[[0, 9], 2], 3], 4]);
+// assert.deepEqual(reduction([7, [6, [5, [4, [3, 2]]]]]), [7, [6, [5, [7, 0]]]]);
+// assert.deepEqual(reduction([[6, [5, [4, [3, 2]]]], 1]), [[6, [5, [7, 0]]], 3]);
+// assert.deepEqual(reduction([[[15, 2], 3], 4]), [[[[7, 8], 2], 3], 4]);
+// assert.deepEqual(reduction([[6, [5, [4, [3, 2]]]], 1]), [[6, [5, [7, 0]]], 3]);
+// assert.deepEqual(
+//   reduction([
+//     [
+//       [[[4, 3], 4], 4],
+//       [7, [[8, 4], 9]],
+//     ],
+//     [1, 1],
+//   ]),
+//   [
+//     [
+//       [[0, 7], 4],
+//       [
+//         [7, 8],
+//         [6, 0],
+//       ],
+//     ],
+//     [8, 1],
+//   ]
+// );
+
+// assert.deepEqual(
+//   addAll([
+//     [1, 1],
+//     [2, 2],
+//     [3, 3],
+//     [4, 4],
+//   ]),
+//   [
+//     [
+//       [
+//         [1, 1],
+//         [2, 2],
+//       ],
+//       [3, 3],
+//     ],
+//     [4, 4],
+//   ]
+// );
+
+// assert.deepEqual(
+//   addAll([
+//     [1, 1],
+//     [2, 2],
+//     [3, 3],
+//     [4, 4],
+//     [5, 5],
+//     [6, 6],
+//   ]),
+//   [
+//     [
+//       [
+//         [5, 0],
+//         [7, 4],
+//       ],
+//       [5, 5],
+//     ],
+//     [6, 6],
+//   ]
+// );
+
+// assert.equal(
+//   magnitude(
+//     addAll([
+//       [
+//         [
+//           [0, [5, 8]],
+//           [
+//             [1, 7],
+//             [9, 6],
+//           ],
+//         ],
+//         [
+//           [4, [1, 2]],
+//           [[1, 4], 2],
+//         ],
+//       ],
+//       [
+//         [[5, [2, 8]], 4],
+//         [5, [[9, 9], 0]],
+//       ],
+//       [
+//         6,
+//         [
+//           [
+//             [6, 2],
+//             [5, 6],
+//           ],
+//           [
+//             [7, 6],
+//             [4, 7],
+//           ],
+//         ],
+//       ],
+//       [
+//         [
+//           [6, [0, 7]],
+//           [0, 9],
+//         ],
+//         [4, [9, [9, 0]]],
+//       ],
+//       [
+//         [
+//           [7, [6, 4]],
+//           [3, [1, 3]],
+//         ],
+//         [[[5, 5], 1], 9],
+//       ],
+//       [
+//         [
+//           6,
+//           [
+//             [7, 3],
+//             [3, 2],
+//           ],
+//         ],
+//         [
+//           [
+//             [3, 8],
+//             [5, 7],
+//           ],
+//           4,
+//         ],
+//       ],
+//       [
+//         [
+//           [
+//             [5, 4],
+//             [7, 7],
+//           ],
+//           8,
+//         ],
+//         [[8, 3], 8],
+//       ],
+//       [
+//         [9, 3],
+//         [
+//           [9, 9],
+//           [6, [4, 9]],
+//         ],
+//       ],
+//       [
+//         [2, [[7, 7], 7]],
+//         [
+//           [5, 8],
+//           [
+//             [9, 3],
+//             [0, 2],
+//           ],
+//         ],
+//       ],
+//       [
+//         [
+//           [[5, 2], 5],
+//           [8, [3, 7]],
+//         ],
+//         [
+//           [5, [7, 5]],
+//           [4, 4],
+//         ],
+//       ],
+//     ])
+//   ),
+//   4140
+// );
+
+// assert.deepEqual(
+//   reduction([
+//     [
+//       [
+//         [
+//           [7, 0],
+//           [7, 7],
+//         ],
+//         [
+//           [7, 7],
+//           [7, 8],
+//         ],
+//       ],
+//       [
+//         [
+//           [7, 7],
+//           [8, 8],
+//         ],
+//         [
+//           [7, 7],
+//           [8, 7],
+//         ],
+//       ],
+//     ],
+//     [
+//       7,
+//       [
+//         5,
+//         [
+//           [3, 8],
+//           [1, 4],
+//         ],
+//       ],
+//     ],
+//   ]),
+//   [
+//     [
+//       [
+//         [7, 7],
+//         [7, 8],
+//       ],
+//       [
+//         [9, 5],
+//         [8, 7],
+//       ],
+//     ],
+//     [
+//       [
+//         [6, 8],
+//         [0, 8],
+//       ],
+//       [
+//         [9, 9],
+//         [9, 0],
+//       ],
+//     ],
+//   ]
+// );
+
+// assert.deepEqual(
+//   addAll([
+//     [
+//       [
+//         [0, [4, 5]],
+//         [0, 0],
+//       ],
+//       [
+//         [
+//           [4, 5],
+//           [2, 6],
+//         ],
+//         [9, 5],
+//       ],
+//     ],
+//     [
+//       7,
+//       [
+//         [
+//           [3, 7],
+//           [4, 3],
+//         ],
+//         [
+//           [6, 3],
+//           [8, 8],
+//         ],
+//       ],
+//     ],
+//     [
+//       [
+//         2,
+//         [
+//           [0, 8],
+//           [3, 4],
+//         ],
+//       ],
+//       [
+//         [[6, 7], 1],
+//         [7, [1, 6]],
+//       ],
+//     ],
+//     [
+//       [
+//         [[2, 4], 7],
+//         [6, [0, 5]],
+//       ],
+//       [
+//         [
+//           [6, 8],
+//           [2, 8],
+//         ],
+//         [
+//           [2, 1],
+//           [4, 5],
+//         ],
+//       ],
+//     ],
+//     [
+//       7,
+//       [
+//         5,
+//         [
+//           [3, 8],
+//           [1, 4],
+//         ],
+//       ],
+//     ],
+//     [
+//       [2, [2, 2]],
+//       [8, [8, 1]],
+//     ],
+//     [2, 9],
+//     [
+//       1,
+//       [
+//         [[9, 3], 9],
+//         [
+//           [9, 0],
+//           [0, 7],
+//         ],
+//       ],
+//     ],
+//     [[[5, [7, 4]], 7], 1],
+//     [
+//       [[[4, 2], 2], 6],
+//       [8, 7],
+//     ],
+//   ]),
+//   [
+//     [
+//       [
+//         [8, 7],
+//         [7, 7],
+//       ],
+//       [
+//         [8, 6],
+//         [7, 7],
+//       ],
+//     ],
+//     [
+//       [
+//         [0, 7],
+//         [6, 6],
+//       ],
+//       [8, 7],
+//     ],
+//   ]
+// );
 
 console.log(
-  processPacket(
-    strToBin(
-      '00569F4A0488043262D30B333FCE6938EC5E5228F2C78A017CD78C269921249F2C69256C559CC01083BA00A4C5730FF12A56B1C49A480283C0055A532CF2996197653005FC01093BC4CE6F5AE49E27A7532200AB25A653800A8CAE5DE572EC40080CD26CA01CAD578803CBB004E67C573F000958CAF5FC6D59BC8803D1967E0953C68401034A24CB3ACD934E311004C5A00A4AB9CAE99E52648401F5CC4E91B6C76801F59DA63C1F3B4C78298014F91BCA1BAA9CBA99006093BFF916802923D8CC7A7A09CA010CD62DF8C2439332A58BA1E495A5B8FA846C00814A511A0B9004C52F9EF41EC0128BF306E4021FD005CD23E8D7F393F48FA35FCE4F53191920096674F66D1215C98C49850803A600D4468790748010F8430A60E1002150B20C4273005F8012D95EC09E2A4E4AF7041004A7F2FB3FCDFA93E4578C0099C52201166C01600042E1444F8FA00087C178AF15E179802F377EC695C6B7213F005267E3D33F189ABD2B46B30042655F0035300042A0F47B87A200EC1E84306C801819B45917F9B29700AA66BDC7656A0C49DB7CAEF726C9CEC71EC5F8BB2F2F37C9C743A600A442B004A7D2279125B73127009218C97A73C4D1E6EF64A9EFDE5AF4241F3FA94278E0D9005A32D9C0DD002AB2B7C69B23CCF5B6C280094CE12CDD4D0803CF9F96D1F4012929DA895290FF6F5E2A9009F33D796063803551006E3941A8340008743B8D90ACC015C00DDC0010B873052320002130563A4359CF968000B10258024C8DF2783F9AD6356FB6280312EBB394AC6FE9014AF2F8C381008CB600880021B0AA28463100762FC1983122D2A005CBD11A4F7B9DADFD110805B2E012B1F4249129DA184768912D90B2013A4001098391661E8803D05612C731007216C768566007280126005101656E0062013D64049F10111E6006100E90E004100C1620048009900020E0006DA0015C000418000AF80015B3D938'
-    )
-  )
+  addAll([
+    [
+      [
+        [
+          [3, 0],
+          [0, 0],
+        ],
+        1,
+      ],
+      4,
+    ],
+    [
+      [
+        [[3, 4], 0],
+        [7, 7],
+      ],
+      [1, 6],
+    ],
+    [
+      [[[2, 0], 5], 7],
+      [
+        [
+          [3, 1],
+          [2, 6],
+        ],
+        [[0, 8], 6],
+      ],
+    ],
+    [
+      [[[5, 5], 0], 1],
+      [
+        [[0, 0], 1],
+        [
+          [0, 6],
+          [0, 9],
+        ],
+      ],
+    ],
+    [
+      [0, [0, [1, 7]]],
+      [3, [1, [7, 6]]],
+    ],
+    [
+      [
+        [9, [5, 2]],
+        [
+          [5, 2],
+          [6, 8],
+        ],
+      ],
+      [
+        [[7, 0], 7],
+        [
+          [2, 3],
+          [9, 4],
+        ],
+      ],
+    ],
+    [
+      [
+        [[3, 8], 7],
+        [
+          [0, 7],
+          [2, 0],
+        ],
+      ],
+      [0, [[2, 9], 0]],
+    ],
+    [
+      [
+        [7, [2, 2]],
+        [3, 4],
+      ],
+      [6, 7],
+    ],
+    [
+      8,
+      [
+        [[3, 3], 8],
+        [
+          [7, 1],
+          [6, 7],
+        ],
+      ],
+    ],
+    [
+      [9, [9, 8]],
+      [
+        [1, [9, 1]],
+        [2, 5],
+      ],
+    ],
+    [
+      [
+        [7, 8],
+        [
+          [1, 2],
+          [2, 6],
+        ],
+      ],
+      [
+        [9, 7],
+        [6, [7, 0]],
+      ],
+    ],
+    [
+      [
+        [3, 3],
+        [[5, 6], 5],
+      ],
+      [[[2, 8], 1], 9],
+    ],
+    [
+      [
+        [2, [5, 0]],
+        [
+          [9, 9],
+          [4, 0],
+        ],
+      ],
+      [0, 5],
+    ],
+    [
+      [
+        [9, 3],
+        [
+          [9, 4],
+          [5, 8],
+        ],
+      ],
+      [
+        [
+          [3, 2],
+          [7, 1],
+        ],
+        [[3, 8], 1],
+      ],
+    ],
+    [
+      [3, 2],
+      [
+        [6, [0, 9]],
+        [8, 3],
+      ],
+    ],
+    [
+      [
+        [5, 7],
+        [
+          [7, 4],
+          [4, 6],
+        ],
+      ],
+      [[[9, 8], 3], 3],
+    ],
+    [
+      [[4, [2, 8]], 9],
+      [
+        [
+          [8, 5],
+          [9, 7],
+        ],
+        [
+          [8, 9],
+          [2, 6],
+        ],
+      ],
+    ],
+    [
+      [[1, [2, 4]], 6],
+      [
+        [8, [5, 2]],
+        [
+          [0, 7],
+          [4, 1],
+        ],
+      ],
+    ],
+    [
+      [
+        [[4, 3], 6],
+        [
+          [6, 4],
+          [4, 2],
+        ],
+      ],
+      [
+        [9, 0],
+        [[5, 9], 9],
+      ],
+    ],
+    [
+      [
+        [[3, 0], 6],
+        [4, [7, 5]],
+      ],
+      4,
+    ],
+    [
+      [
+        [
+          [1, 0],
+          [7, 1],
+        ],
+        0,
+      ],
+      [[[8, 5], 8], 2],
+    ],
+    [
+      [
+        [
+          [2, 9],
+          [4, 1],
+        ],
+        [
+          [8, 9],
+          [3, 3],
+        ],
+      ],
+      [9, [[0, 7], 2]],
+    ],
+    [
+      [1, [4, [4, 2]]],
+      [
+        [
+          [3, 5],
+          [8, 8],
+        ],
+        2,
+      ],
+    ],
+    [
+      [
+        [8, [1, 4]],
+        [[6, 5], 5],
+      ],
+      [[7, [4, 7]], 4],
+    ],
+    [
+      [
+        [[0, 5], 2],
+        [[9, 2], 0],
+      ],
+      0,
+    ],
+    [
+      [
+        [
+          [6, 2],
+          [2, 4],
+        ],
+        [0, [7, 3]],
+      ],
+      [9, [8, [5, 9]]],
+    ],
+    [[8, 0], 2],
+    [
+      [
+        [[0, 2], 2],
+        [
+          [9, 2],
+          [8, 1],
+        ],
+      ],
+      [
+        [
+          [7, 6],
+          [5, 3],
+        ],
+        6,
+      ],
+    ],
+    [
+      [
+        [
+          [8, 7],
+          [5, 3],
+        ],
+        [[3, 0], 8],
+      ],
+      [
+        [
+          [8, 4],
+          [2, 2],
+        ],
+        [[8, 1], 2],
+      ],
+    ],
+    [
+      [
+        [
+          [1, 5],
+          [4, 6],
+        ],
+        [
+          [4, 0],
+          [2, 4],
+        ],
+      ],
+      [
+        [1, 1],
+        [
+          [0, 7],
+          [7, 3],
+        ],
+      ],
+    ],
+    [
+      [7, 2],
+      [
+        [7, [6, 7]],
+        [8, 5],
+      ],
+    ],
+    [
+      [
+        [9, 7],
+        [[6, 6], 9],
+      ],
+      8,
+    ],
+    [
+      [4, 2],
+      [
+        [
+          [1, 0],
+          [9, 1],
+        ],
+        [
+          [0, 7],
+          [8, 0],
+        ],
+      ],
+    ],
+    [
+      [
+        [[5, 9], 5],
+        [8, 9],
+      ],
+      [
+        [2, 4],
+        [
+          [5, 2],
+          [8, 3],
+        ],
+      ],
+    ],
+    [
+      [
+        [
+          [4, 5],
+          [7, 0],
+        ],
+        [4, 5],
+      ],
+      [
+        [7, [6, 4]],
+        [
+          [1, 7],
+          [6, 3],
+        ],
+      ],
+    ],
+    [[2, 0], 4],
+    [
+      [
+        2,
+        [
+          [5, 1],
+          [2, 1],
+        ],
+      ],
+      [
+        [5, [7, 2]],
+        [
+          [2, 3],
+          [7, 0],
+        ],
+      ],
+    ],
+    [
+      [4, [4, 9]],
+      [9, [6, 8]],
+    ],
+    [
+      [
+        [
+          [6, 1],
+          [1, 5],
+        ],
+        [0, [4, 0]],
+      ],
+      [[[7, 0], 2], 4],
+    ],
+    [
+      [
+        [
+          [3, 3],
+          [2, 2],
+        ],
+        [[2, 4], 2],
+      ],
+      [[8, [1, 1]], 4],
+    ],
+    [
+      [
+        [[1, 5], 8],
+        [
+          [9, 4],
+          [7, 7],
+        ],
+      ],
+      [
+        [
+          [8, 7],
+          [7, 2],
+        ],
+        [0, [7, 3]],
+      ],
+    ],
+    [9, [[7, [0, 4]], 4]],
+    [4, [0, 8]],
+    [
+      [
+        [[2, 6], 1],
+        [8, [8, 4]],
+      ],
+      [
+        [8, 2],
+        [1, [8, 4]],
+      ],
+    ],
+    [
+      [7, [8, [8, 8]]],
+      [4, 1],
+    ],
+    [
+      [0, 6],
+      [
+        [7, [5, 9]],
+        [[7, 1], 8],
+      ],
+    ],
+    [4, 6],
+    [
+      [
+        [
+          [3, 2],
+          [5, 6],
+        ],
+        [0, 7],
+      ],
+      [8, [7, [9, 5]]],
+    ],
+    [
+      [
+        [3, 7],
+        [4, 5],
+      ],
+      6,
+    ],
+    [
+      [
+        [0, [3, 9]],
+        [9, 1],
+      ],
+      6,
+    ],
+    [
+      [
+        [[7, 3], 8],
+        [6, 7],
+      ],
+      [
+        [1, 0],
+        [1, 7],
+      ],
+    ],
+    [
+      [[5, [4, 8]], 2],
+      [
+        [[7, 1], 6],
+        [[0, 3], 2],
+      ],
+    ],
+    [
+      [1, 0],
+      [
+        [1, 2],
+        [[2, 0], 1],
+      ],
+    ],
+    [
+      [
+        8,
+        [
+          [6, 1],
+          [7, 1],
+        ],
+      ],
+      0,
+    ],
+    [
+      [9, [2, 0]],
+      [[7, [6, 2]], 4],
+    ],
+    [
+      [
+        [9, [9, 4]],
+        [[4, 8], 3],
+      ],
+      [
+        [9, 0],
+        [
+          [2, 2],
+          [0, 6],
+        ],
+      ],
+    ],
+    [
+      [
+        [7, 5],
+        [[2, 9], 6],
+      ],
+      [
+        [2, 4],
+        [
+          [1, 1],
+          [8, 2],
+        ],
+      ],
+    ],
+    [
+      [
+        [1, [6, 3]],
+        [
+          [2, 2],
+          [1, 8],
+        ],
+      ],
+      [
+        [
+          [7, 3],
+          [6, 0],
+        ],
+        [4, [7, 6]],
+      ],
+    ],
+    [6, 5],
+    [
+      [3, [9, [4, 4]]],
+      [
+        [6, 9],
+        [4, 5],
+      ],
+    ],
+    [
+      [
+        [4, [1, 8]],
+        [[4, 0], 6],
+      ],
+      [
+        [
+          [9, 0],
+          [8, 3],
+        ],
+        [
+          [8, 6],
+          [3, 2],
+        ],
+      ],
+    ],
+    [
+      [
+        [8, [1, 2]],
+        [[3, 9], 6],
+      ],
+      [[3, 0], 1],
+    ],
+    [[1, [2, [4, 0]]], 6],
+    [
+      0,
+      [
+        [
+          [1, 3],
+          [9, 1],
+        ],
+        [
+          [3, 8],
+          [9, 4],
+        ],
+      ],
+    ],
+    [
+      2,
+      [
+        2,
+        [
+          [2, 7],
+          [7, 8],
+        ],
+      ],
+    ],
+    [
+      [
+        [3, 0],
+        [[4, 6], 2],
+      ],
+      [9, 2],
+    ],
+    [
+      [
+        [5, [2, 2]],
+        [
+          [2, 7],
+          [9, 9],
+        ],
+      ],
+      [
+        [3, [4, 4]],
+        [8, [9, 8]],
+      ],
+    ],
+    [
+      [
+        [
+          [7, 5],
+          [7, 9],
+        ],
+        [[8, 5], 6],
+      ],
+      [
+        [1, [8, 4]],
+        [8, 2],
+      ],
+    ],
+    [
+      [
+        [6, 4],
+        [5, 5],
+      ],
+      [
+        [[8, 1], 5],
+        [
+          [6, 4],
+          [6, 9],
+        ],
+      ],
+    ],
+    [
+      [
+        [[8, 9], 0],
+        [[4, 6], 7],
+      ],
+      [
+        [
+          [3, 9],
+          [6, 4],
+        ],
+        [8, [7, 4]],
+      ],
+    ],
+    [4, [[7, 7], 4]],
+    [
+      [
+        [
+          [4, 9],
+          [1, 2],
+        ],
+        [8, [4, 7]],
+      ],
+      [
+        [8, [4, 8]],
+        [0, [5, 4]],
+      ],
+    ],
+    [1, [7, 9]],
+    [
+      [
+        [5, [2, 0]],
+        [
+          [4, 3],
+          [6, 8],
+        ],
+      ],
+      [9, 9],
+    ],
+    [
+      [
+        [[3, 9], 9],
+        [4, 3],
+      ],
+      [1, [3, [8, 1]]],
+    ],
+    [
+      [
+        [
+          [8, 7],
+          [6, 1],
+        ],
+        [3, 9],
+      ],
+      [5, [[8, 0], 4]],
+    ],
+    [
+      [
+        [
+          [8, 2],
+          [4, 6],
+        ],
+        [6, [9, 9]],
+      ],
+      [1, [[7, 7], 4]],
+    ],
+    [
+      [7, 5],
+      [
+        [5, 0],
+        [0, 3],
+      ],
+    ],
+    [
+      [
+        [6, 0],
+        [9, 1],
+      ],
+      [
+        [
+          [4, 3],
+          [5, 0],
+        ],
+        [
+          [9, 5],
+          [0, 0],
+        ],
+      ],
+    ],
+    [8, [[3, 6], 3]],
+    [
+      [
+        [[9, 3], 7],
+        [1, 3],
+      ],
+      [
+        [
+          [6, 4],
+          [8, 4],
+        ],
+        [1, 5],
+      ],
+    ],
+    [
+      [
+        [[3, 8], 2],
+        [5, 4],
+      ],
+      [
+        [[1, 8], 5],
+        [2, [2, 7]],
+      ],
+    ],
+    [
+      [2, 9],
+      [6, [0, 2]],
+    ],
+    [
+      [2, [7, 9]],
+      [
+        [4, 1],
+        [
+          [9, 2],
+          [0, 7],
+        ],
+      ],
+    ],
+    [
+      [0, [6, 4]],
+      [
+        [9, 2],
+        [0, [0, 7]],
+      ],
+    ],
+    [
+      [
+        [
+          [7, 2],
+          [8, 6],
+        ],
+        [6, 2],
+      ],
+      [
+        [
+          [1, 6],
+          [2, 2],
+        ],
+        1,
+      ],
+    ],
+    [
+      [1, 6],
+      [
+        [
+          [4, 3],
+          [8, 2],
+        ],
+        [3, [9, 4]],
+      ],
+    ],
+    [
+      [9, [7, 3]],
+      [
+        [[7, 0], 4],
+        [
+          [1, 7],
+          [2, 2],
+        ],
+      ],
+    ],
+    [
+      [7, [5, [9, 8]]],
+      [
+        [
+          [7, 5],
+          [7, 6],
+        ],
+        [7, [9, 8]],
+      ],
+    ],
+    [
+      [
+        [
+          [6, 1],
+          [4, 3],
+        ],
+        4,
+      ],
+      [[[5, 9], 4], 2],
+    ],
+    [
+      [
+        [
+          [5, 1],
+          [2, 5],
+        ],
+        0,
+      ],
+      [
+        [7, [5, 7]],
+        [[4, 4], 9],
+      ],
+    ],
+    [9, 2],
+    [4, [[[6, 6], 5], 7]],
+    [
+      [
+        8,
+        [
+          [7, 3],
+          [0, 7],
+        ],
+      ],
+      8,
+    ],
+    [
+      [
+        [3, 4],
+        [[2, 3], 0],
+      ],
+      [
+        [
+          [9, 6],
+          [1, 1],
+        ],
+        [4, [0, 4]],
+      ],
+    ],
+    [
+      [
+        [
+          [3, 3],
+          [2, 3],
+        ],
+        [2, 5],
+      ],
+      [[4, [2, 7]], 3],
+    ],
+    [
+      [[8, [0, 3]], 2],
+      [4, 4],
+    ],
+    [
+      [
+        [3, 5],
+        [
+          [2, 1],
+          [3, 4],
+        ],
+      ],
+      [[0, 3], 4],
+    ],
+    [
+      [[[4, 1], 4], 2],
+      [
+        [[3, 7], 2],
+        [[8, 1], 3],
+      ],
+    ],
+    [
+      [
+        [
+          [0, 6],
+          [7, 3],
+        ],
+        [5, [3, 9]],
+      ],
+      [7, [[4, 1], 8]],
+    ],
+  ])
+);
+
+console.log(
+  addAll([
+    [
+      [
+        [0, [5, 8]],
+        [
+          [1, 7],
+          [9, 6],
+        ],
+      ],
+      [
+        [4, [1, 2]],
+        [[1, 4], 2],
+      ],
+    ],
+    [
+      [[5, [2, 8]], 4],
+      [5, [[9, 9], 0]],
+    ],
+    [
+      6,
+      [
+        [
+          [6, 2],
+          [5, 6],
+        ],
+        [
+          [7, 6],
+          [4, 7],
+        ],
+      ],
+    ],
+    [
+      [
+        [6, [0, 7]],
+        [0, 9],
+      ],
+      [4, [9, [9, 0]]],
+    ],
+    [
+      [
+        [7, [6, 4]],
+        [3, [1, 3]],
+      ],
+      [[[5, 5], 1], 9],
+    ],
+    [
+      [
+        6,
+        [
+          [7, 3],
+          [3, 2],
+        ],
+      ],
+      [
+        [
+          [3, 8],
+          [5, 7],
+        ],
+        4,
+      ],
+    ],
+    [
+      [
+        [
+          [5, 4],
+          [7, 7],
+        ],
+        8,
+      ],
+      [[8, 3], 8],
+    ],
+    [
+      [9, 3],
+      [
+        [9, 9],
+        [6, [4, 9]],
+      ],
+    ],
+    [
+      [2, [[7, 7], 7]],
+      [
+        [5, 8],
+        [
+          [9, 3],
+          [0, 2],
+        ],
+      ],
+    ],
+    [
+      [
+        [[5, 2], 5],
+        [8, [3, 7]],
+      ],
+      [
+        [5, [7, 5]],
+        [4, 4],
+      ],
+    ],
+  ])
 );
