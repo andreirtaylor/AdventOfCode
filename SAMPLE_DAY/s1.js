@@ -1,5 +1,5 @@
 // see https://www.npmjs.com/package/datastructures-js
-import {
+const {
   Stack,
   Queue,
   EnhancedSet,
@@ -22,11 +22,16 @@ import {
   TrieNode,
   Graph,
   DirectedGraph,
-} from "datastructures-js";
+} = require("datastructures-js");
 
 const fs = require("fs");
 
-const data = fs.readFileSync("./testInput.txt", {
-  encoding: "utf8",
-  flag: "r",
-});
+// const d = fs.readFileSync("./testInput.txt", {
+//   encoding: "utf8",
+//   flag: "r",
+// });
+
+// const d = fs.readFileSync("./theRealInput.txt", {
+//   encoding: "utf8",
+//   flag: "r",
+// });

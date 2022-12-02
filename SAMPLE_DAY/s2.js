@@ -1,5 +1,5 @@
 // see https://www.npmjs.com/package/datastructures-js
-import {
+const {
   Stack,
   Queue,
   EnhancedSet,
@@ -22,19 +22,16 @@ import {
   TrieNode,
   Graph,
   DirectedGraph,
-} from 'datastructures-js';
-const employeesQueue = new PriorityQueue({
-  compare: (e1, e2) => {
-    if (e1.salary > e2.salary) return -1; // do not swap
-    if (e1.salary < e2.salary) return 1; // swap
+} = require("datastructures-js");
 
-    // salaries are the same, compare rank
-    return e1.rank < e2.rank ? 1 : -1;
-  },
-});
-const fs = require('fs');
+const fs = require("fs");
 
-const data = fs.readFileSync('./testInput.txt', {
-  encoding: 'utf8',
-  flag: 'r',
+const d = fs.readFileSync("./testInput.txt", {
+  encoding: "utf8",
+  flag: "r",
 });
+
+// const d = fs.readFileSync("./theRealInput.txt", {
+//   encoding: "utf8",
+//   flag: "r",
+// });
