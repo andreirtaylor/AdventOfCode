@@ -1,29 +1,3 @@
-// see https://www.npmjs.com/package/datastructures-js
-const {
-  Stack,
-  Queue,
-  EnhancedSet,
-  LinkedList,
-  LinkedListNode,
-  DoublyLinkedList,
-  DoublyLinkedListNode,
-  MinHeap,
-  MaxHeap,
-  HeapNode, // interface
-  PriorityQueueOptions, // interface
-  PriorityQueueItem, // interface
-  MinPriorityQueue,
-  MaxPriorityQueue,
-  BinarySearchTree,
-  BinarySearchTreeNode,
-  AvlTree,
-  AvlTreeNode,
-  Trie,
-  TrieNode,
-  Graph,
-  DirectedGraph,
-} = require('datastructures-js');
-
 const fs = require('fs');
 
 // if the flag -r is set use the real input
@@ -58,13 +32,12 @@ stacks
       if (l[1 + i * 4] != ' ') stks[i + 1].push(l[1 + i * 4]);
     }
   });
-console.log(instructions);
+
 instructions
   .trim()
   .split('\n')
   .forEach(l => {
     let [trash, amount, trash2, from, trash3, to] = l.split(' ');
-    console.log(l.split(' '), amount, from, to);
     amount = amount | 0;
     while (amount--) {
       stks[to].push(stks[from].pop());

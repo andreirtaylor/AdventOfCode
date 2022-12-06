@@ -1,29 +1,3 @@
-// see https://www.npmjs.com/package/datastructures-js
-const {
-  Stack,
-  Queue,
-  EnhancedSet,
-  LinkedList,
-  LinkedListNode,
-  DoublyLinkedList,
-  DoublyLinkedListNode,
-  MinHeap,
-  MaxHeap,
-  HeapNode, // interface
-  PriorityQueueOptions, // interface
-  PriorityQueueItem, // interface
-  MinPriorityQueue,
-  MaxPriorityQueue,
-  BinarySearchTree,
-  BinarySearchTreeNode,
-  AvlTree,
-  AvlTreeNode,
-  Trie,
-  TrieNode,
-  Graph,
-  DirectedGraph,
-} = require('datastructures-js');
-
 const fs = require('fs');
 
 // if the flag -r is set use the real input
