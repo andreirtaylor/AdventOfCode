@@ -22,16 +22,24 @@ const {
   TrieNode,
   Graph,
   DirectedGraph,
-} = require("datastructures-js");
+} = require('datastructures-js');
 
-const fs = require("fs");
+const fs = require('fs');
 
-// const d = fs.readFileSync("./testInput.txt", {
-//   encoding: "utf8",
-//   flag: "r",
-// });
-
-// const d = fs.readFileSync("./theRealInput.txt", {
-//   encoding: "utf8",
-//   flag: "r",
-// });
+// if the flag -r is set use the real input
+// if the flag -t is set use the test input
+// otherwise use the sample input
+const d = process.argv.includes('-r')
+  ? fs.readFileSync('./theRealInput.txt', {
+      encoding: 'utf8',
+      flag: 'r',
+    })
+  : process.argv.includes('-t')
+  ? fs.readFileSync('./testInput.txt', {
+      encoding: 'utf8',
+      flag: 'r',
+    })
+  : fs.readFileSync('./sampleInput.txt', {
+      encoding: 'utf8',
+      flag: 'r',
+    });
