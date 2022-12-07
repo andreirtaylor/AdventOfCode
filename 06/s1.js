@@ -43,3 +43,13 @@ const d = process.argv.includes('-r')
       encoding: 'utf8',
       flag: 'r',
     });
+
+const signal = d.split('');
+const LENGTH = 14;
+for (let i = LENGTH - 1; i < signal.length; i++) {
+  const slice = signal.slice(i - LENGTH, i);
+  if (new Set(slice).size === LENGTH) {
+    console.log(i);
+    break;
+  }
+}
